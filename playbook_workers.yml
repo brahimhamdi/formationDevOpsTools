@@ -17,6 +17,6 @@
     tags:
     - join_command
   - name: Joindre le cluster
-    command: bash /tmp/join-command.sh/join-command/master/join-command
+    command: bash /tmp/join-command.sh
     tags:
     - join_command

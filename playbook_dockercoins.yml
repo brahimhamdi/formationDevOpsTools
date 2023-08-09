@@ -1,0 +1,13 @@
+- hosts: control-plane
+  gather_facts: false
+  tasks:
+  - name: apply manifest yaml
+    shell: |
+      kubectl apply -f dockercoins.yaml
+      sleep 30
+      kubectl get all -n dockercoins
+    register: dockercoins_deploy
+  - name: Verify dockercoins deploy
+    debug:
+      msg: "{{ dockercoins_deploy.stdout_lines | list }}"
+      
