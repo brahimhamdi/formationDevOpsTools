@@ -1,0 +1,22 @@
+- hosts: nodes
+  become: true
+  tasks:
+  - name: Reset worker
+    shell: |
+      kubeadm reset -f
+      rm -rf /home/vagrant/.kube /etc/kubernetes/ /var/lib/kubelet/ /var/lib/etcd/ /etc/cni
+    tags:
+    - reset_worker
+  - name: Configurer ip du node
+    lineinfile:
+      path: /etc/default/kubelet
+      create: yes
+      line: KUBELET_EXTRA_ARGS=--node-ip={{ ansible_eth1.ipv4.address }}
+  - name: Copiez la commande join sur les cibles
+    copy: src=./join-command dest=/tmp/join-command.sh mode=0777
+    tags:
+    - join_command
+  - name: Joindre le cluster
+    command: bash /tmp/join-command.sh/join-command/master/join-command
+    tags:
+    - join_command

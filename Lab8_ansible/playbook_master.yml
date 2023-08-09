@@ -1,0 +1,59 @@
+- hosts: k8s-master
+  become: true
+  tasks:
+  - name: Reset cluster
+    shell: |
+      kubeadm reset -f
+    rm -rf /home/vagrant/.kube /etc/kubernetes/ /var/lib/kubelet/ /var/lib/etcd/ /etc/cni
+    tags:
+    - reset_cluster
+  - name: Configurer ip du node
+    lineinfile:
+      path: /etc/default/kubelet
+      create: yes
+      line: KUBELET_EXTRA_ARGS=--node-ip={{ ansible_eth1.ipv4.address }}
+
+  - name: Initialiser le cluster Kubernetes à l'aide de kubeadm
+    command: kubeadm init --apiserver-advertise-address=192.168.56.10 --pod-network-cidr=10.244.0.0/16
+    register: init_cluster_res
+    tags :
+    - init_cluster
+  - name: Résultat d'init cluster
+    debug:
+      msg: "{{ init_cluster_res.stdout_lines | list }}"
+    tags :
+    - init_cluster
+  - name: Créer .kube de l'utilisateur courant
+    file: 
+      path: /home/vagrant/.kube
+      state: directory
+      recurse: yes
+      owner: vagrant
+      group: vagrant
+  - name: Configurer kubeconfig pour l'utilisateur courant
+    shell: |
+       cp /etc/kubernetes/admin.conf /home/vagrant/.kube/config
+       chown vagrant:vagrant /home/vagrant/.kube/config
+  - name: Récupérer kube-flannel.yml
+    command: wget https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
+  - name: ajouter la ligne de eth1 à kube-flannel.yml
+    lineinfile:
+      dest: "./kube-flannel.yml"
+      insertafter: 'mgr'
+      line: '        - --iface=eth1'
+  - name: Installer un réseau de pods en flannel
+    command: kubectl apply -f kube-flannel.yml
+    become: false
+  - name: Générer la commande de join
+    command: kubeadm token create --print-join-command
+    register: join_command
+    tags:
+    - join_command
+  - name: Copier la commande join dans un fichier sur master
+    copy: content="{{ join_command.stdout_lines[0] }}" dest="./join-command"
+    tags:
+    - join_command
+  - name: Copier la commande join sur un fichier local
+    fetch: src=./join-command dest="./join-command"
+    tags:
+    - join_command
