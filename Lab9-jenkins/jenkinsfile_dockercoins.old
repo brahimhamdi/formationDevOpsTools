@@ -14,16 +14,14 @@ pipeline {
   
     stage('Cloning Git') {
       steps {
-        git 'https://github.com/brahimhamdi/dockercoins100823'
+        git 'https://github.com/brahimhamdi/dockercoins310323'
       }
     }
   
     stage('Build Docker Image') {
       steps{
         script {
-        imgworker = docker.build(workerImg + ":$BUILD_NUMBER","dockercoins/worker")
-        imgrng = docker.build(rngImg + ":$BUILD_NUMBER","dockercoins/rng")
-        imghasher = docker.build(hasherImg + ":$BUILD_NUMBER","dockercoins/hasher")
+        img = docker.build(workerImg + ":$BUILD_NUMBER","worker")
             }
         }
     }
@@ -31,11 +29,7 @@ pipeline {
     stage('Test Docker Image') {
       steps{
         sh "docker run -d --rm --name worker $workerImg:$BUILD_NUMBER"
-        sh "docker run -d --rm --name rng -p 8001:80 $rngImg:$BUILD_NUMBER"
-        sh "docker run -d --rm --name hasher -p 8002:80 $rngImg:$BUILD_NUMBER"
         sh 'sleep 30'
-        sh "curl localhost:8001"
-        sh "curl localhost:8002"
         sh 'docker stop worker'
 
         }
@@ -46,9 +40,7 @@ pipeline {
         script {
       //install gnupg2 et  pass avant (sudo apt install gnupg2 pass)
           docker.withRegistry( '', registryCredential ) {
-            imgworker.push()
-            imgrng.push()
-            imghasher.push()
+            img.push()
                 }
             }
         }
@@ -58,7 +50,7 @@ pipeline {
       steps{
            // sh 'docker rmi brahimhamdi/worker:$BUILD_NUMBER'
             //sh 'ansible-playbook playbook_all.yml'
-            sh 'ansible-playbook playbook_dockercoins.yml'
+            sh 'ansible-playbook --skip-tags=delete_dockercoins playbook_master.yml'
           }
         }
     
